@@ -78,13 +78,27 @@ public struct SymbolPicker: View {
     @State private var searchText = ""
     
     /// Dynamic collection of symbols shown to the user based on `searchText`.
-    private var displayedSymbols: [String] {
-        var symbols = symbolGroup.symbols
-        if searchText != "" {
-            symbols = symbols.filter({ $0.localizedCaseInsensitiveContains(searchText) })
+//    private var displayedSymbols: [String] {
+//        var symbols = symbolGroup.symbols
+//        if searchText != "" {
+//            symbols = symbols.filter({ $0.localizedCaseInsensitiveContains(searchText) })
+//        }
+//        return symbols
+//    }
+    
+    private var displayedSymbols: [(section: String, symbols: [String])] {
+        let allSections = symbolGroup.sections
+        
+        if searchText.isEmpty {
+            return allSections
         }
-        return symbols
+
+        return allSections.compactMap { section in
+            let filteredSymbols = section.symbols.filter { $0.localizedCaseInsensitiveContains(searchText) }
+            return filteredSymbols.isEmpty ? nil : (section.section, filteredSymbols)
+        }
     }
+
     
     /// View and logic for symbol tiles.
     @ViewBuilder private func symbolTile(_ thisSymbol: String) -> some View {
@@ -104,16 +118,25 @@ public struct SymbolPicker: View {
         .buttonStyle(.plain)
     }
     
-    /// Dynamically sized grid of symbol tiles within a scrollable container.
+    /// Dynamically sized grid of symbol tiles within a scrollable container in a List with section header for group title.
     @ViewBuilder private var tileGrid: some View {
-        ScrollView(.vertical) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize), spacing: gridSpacing)], spacing: gridSpacing) {
-                ForEach(displayedSymbols, id: \.self) { thisSymbol in
-                    symbolTile(thisSymbol)
+        List {
+            ForEach(displayedSymbols, id: \.section) { section in
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize), spacing: gridSpacing)], spacing: gridSpacing) {
+                        ForEach(section.symbols, id: \.self) { thisSymbol in
+                            symbolTile(thisSymbol)
+                        }
+                    }
+                } header: {
+                    if section.section != "" {
+                        Text(section.section)
+                            .font(.headline)
+                    }
                 }
             }
-            .padding(.horizontal)
         }
+        .listStyle(.plain)
     }
     
     /// View and logic for button when using default symbol.
@@ -162,7 +185,7 @@ public struct SymbolPicker: View {
         #else
         NavigationStack {
             tileGrid
-                .navigationTitle(symbolGroup.name)
+//                .navigationTitle(symbolGroup.name)
                 .searchable(text: $searchText)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -182,5 +205,6 @@ struct SymbolPicker_Previews: PreviewProvider {
     
     static var previews: some View {
         SymbolPicker(symbol: $symbol, defaultSymbol: "trash")
+            .frame(width: 420, height: 500)
     }
 }
